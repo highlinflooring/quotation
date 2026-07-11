@@ -130,7 +130,7 @@
           <!-- 雙按鈕添加區 -->
           <div class="flex flex-wrap sm:flex-nowrap gap-2">
             
-            <!-- 按鈕 1：添加單一工序層次 -->
+            <!-- 按鈕 1：添加單一工序層次 (修改為手機上 left-0，避免向左側出界) -->
             <div class="relative flex-1 sm:flex-none">
               <button
                 id="layer-menu-btn"
@@ -140,12 +140,12 @@
                 ➕ 單一工序
               </button>
 
-              <div id="layer-dropdown" class="hidden absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-20 max-h-96 overflow-y-auto">
+              <div id="layer-dropdown" class="hidden absolute left-0 sm:right-0 sm:left-auto mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-20 max-h-96 overflow-y-auto">
                 <!-- 動態注入分組單一工序 -->
               </div>
             </div>
 
-            <!-- 按鈕 2：添加系統套餐 -->
+            <!-- 按鈕 2：添加系統套餐 (保持 right-0，因為在右半邊，向左側展開安全) -->
             <div class="relative flex-1 sm:flex-none">
               <button
                 id="system-menu-btn"
@@ -581,6 +581,7 @@
       }
     }
 
+    // 關閉所有選單
     function closeAllMenus() {
       document.getElementById('base-dropdown').classList.add('hidden');
       document.getElementById('layer-dropdown').classList.add('hidden');
