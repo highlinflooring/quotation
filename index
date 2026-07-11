@@ -1,0 +1,1163 @@
+import React, { useState, useMemo } from 'react';
+
+// 預設「地面基底整平處理」選項
+const BASE_LEVELING_PRESETS = [
+  { id: 'bp-1', name: '車磨處理', price: 6, hasThickness: false },
+  { id: 'bp-2', name: '基本自流平', price: 14, hasThickness: false },
+  { id: 'bp-3', name: '自流平', price: 22, hasThickness: true, thickness: 15 },
+  { id: 'bp-4', name: '自流平', price: 26, hasThickness: true, thickness: 25 },
+  { id: 'bp-5', name: '改性自流平(加環氧)', price: 27, hasThickness: true, thickness: 15 },
+  { id: 'bp-6', name: '改性自流平(加環氧)', price: 35, hasThickness: true, thickness: 25 },
+  { id: 'bp-7', name: '高精度泥水硬底', price: 40, hasThickness: true, thickness: 30 },
+  { id: 'bp-8', name: '打拆及清泥頭', price: 15, hasThickness: false },
+  { id: 'bp-9', name: '戶外車磨', price: 8, hasThickness: false },
+];
+
+// 預設「工序層次」選項 (分組呈現)
+const PROCESS_LAYER_PRESETS = [
+  {
+    category: '【底】',
+    items: [
+      { name: '底油', price: 7.5 },
+      { name: '底油層及石英砂修補', price: 7.5 },
+      { name: '環氧加石英砂修補地台', price: 9 },
+      { name: '聚合物防水砂漿層', price: 18 }
+    ]
+  },
+  {
+    category: '【Epoxy】',
+    items: [
+      { name: '1層 環氧中塗(加石英砂)(然後車磨撫平砂粒) + 1層 環氧中塗', price: 14 },
+      { name: '1層 環氧滾塗', price: 5 },
+      { name: '1層 環氧自流平', price: 11 }
+    ]
+  },
+  {
+    category: '【無溶劑Epoxy(停車場)】',
+    items: [
+      { name: '1層 無溶劑環氧中塗(加石英砂)(然後車磨撫平砂粒) + 1層 無溶劑環氧中塗', price: 14 },
+      { name: '撒沙防滑系統', price: 5 },
+      { name: '1層 無溶劑環氧滾塗', price: 5 },
+      { name: '2層 無溶劑環氧滾塗', price: 9 }
+    ]
+  },
+  {
+    category: '【丙烯酸(Ball Court)】',
+    items: [
+      { name: '1層 粗彈性緩衝層 + 1層 幼彈性緩衝層', price: 20 },
+      { name: '1層 丙烯酸中塗層(加石英砂)(然後車磨撫平砂粒)', price: 10 },
+      { name: '1層 一層丙烯酸混合石英砂面層 + 1層 一層丙烯酸面層', price: 11 },
+      { name: '標準球場劃線', price: 7500, isFlatRate: true, unit: '場' }
+    ]
+  },
+  {
+    category: '【岩片/彩砂】',
+    items: [
+      { name: '1層 水性環氧自流平', price: 11 },
+      { name: '岩片', price: 6 },
+      { name: '彩砂環氧自流平', price: 16 }
+    ]
+  },
+  {
+    category: '【水泥原色】',
+    items: [
+      { name: '水泥原色自流平工程', price: 20 },
+      { name: '砂紙精細車磨', price: 4 },
+      { name: '1層 獨家噴槍霧化復古漆', price: 9 },
+      { name: '修飾劑', price: 7 }
+    ]
+  },
+  {
+    category: '【罩面】',
+    items: [
+      { name: '1層 耐磨罩面(啞面)', price: 5 },
+      { name: '2層 耐磨罩面(啞面)', price: 9 },
+      { name: '1層 水性PU啞面罩面', price: 9 },
+      { name: '1層 315 PU罩面', price: 11 },
+      { name: '1層 聚脲耐磨罩面', price: 11 }
+    ]
+  },
+  {
+    category: '【其他】',
+    items: [
+      { name: 'Eikood地板', price: 39 },
+      { name: 'HighLin SPC地板', price: 13 },
+      { name: 'Eikood/HighLin SPC地板安裝', price: 13 },
+      { name: '自訂項目', price: 0 }
+    ]
+  }
+];
+
+// 預設「系統套餐」選項
+const SYSTEM_PRESETS = [
+  {
+    name: 'Epoxy環氧地台油系統 (滾塗)',
+    items: [
+      { name: '底油', price: 7.5 },
+      { name: '1層 環氧中塗(加石英砂)(然後車磨撫平砂粒) + 1層 環氧中塗', price: 14 },
+      { name: '1層 環氧滾塗', price: 5 }
+    ]
+  },
+  {
+    name: 'Epoxy環氧地台油系統 (自流平)',
+    items: [
+      { name: '底油', price: 7.5 },
+      { name: '1層 環氧中塗(加石英砂)(然後車磨撫平砂粒) + 1層 環氧中塗', price: 14 },
+      { name: '1層 環氧自流平', price: 11 }
+    ]
+  },
+  {
+    name: '無溶劑環氧停車場地坪系統',
+    items: [
+      { name: '底油層及石英砂修補', price: 7.5 },
+      { name: '1層 無溶劑環氧中塗(加石英砂)(然後車磨撫平砂粒) + 1層 無溶劑環氧中塗', price: 14 },
+      { name: '撒沙防滑系統', price: 5 },
+      { name: '2層 無溶劑環氧滾塗', price: 9 },
+      { name: '1層 315 PU罩面', price: 11 }
+    ]
+  },
+  {
+    name: '硬性丙烯酸運動球場地坪系統',
+    items: [
+      { name: '底油', price: 7.5 },
+      { name: '1層 丙烯酸中塗層(加石英砂)(然後車磨撫平砂粒)', price: 10 },
+      { name: '1層 一層丙烯酸混合石英砂面層 + 1層 一層丙烯酸面層', price: 11 }
+    ]
+  },
+  {
+    name: '彈性丙烯酸運動球場地坪系統',
+    items: [
+      { name: '底油', price: 7.5 },
+      { name: '1層 粗彈性緩衝層 + 1層 幼彈性緩衝層', price: 20 },
+      { name: '1層 丙烯酸中塗層(加石英砂)(然後車磨撫平砂粒)', price: 10 },
+      { name: '1層 一層丙烯酸混合石英砂面層 + 1層 一層丙烯酸面層', price: 11 }
+    ]
+  },
+  {
+    name: '岩片環氧系統',
+    items: [
+      { name: '底油', price: 7.5 },
+      { name: '環氧加石英砂修補地台', price: 9 },
+      { name: '1層 水性環氧自流平', price: 11 },
+      { name: '岩片', price: 6 },
+      { name: '1層 聚脲耐磨罩面', price: 11 }
+    ]
+  },
+  {
+    name: '彩砂環氧系統',
+    items: [
+      { name: '底油', price: 7.5 },
+      { name: '環氧加石英砂修補地台', price: 9 },
+      { name: '1層 環氧中塗(加石英砂)(然後車磨撫平砂粒) + 1層 環氧中塗', price: 14 },
+      { name: '彩砂環氧自流平', price: 16 }
+    ]
+  },
+  {
+    name: '水泥原色藝術復古漆系統',
+    items: [
+      { name: '水泥原色自流平工程', price: 20 },
+      { name: '砂紙精細車磨', price: 4 },
+      { name: '1層 獨家噴槍霧化復古漆', price: 9 },
+      { name: '修飾劑', price: 7 }
+    ]
+  },
+  {
+    name: '保留水泥原色系統',
+    items: [
+      { name: '水泥原色自流平工程', price: 20 },
+      { name: '底油', price: 7.5 },
+      { name: '修飾劑', price: 7 }
+    ]
+  },
+  {
+    name: '自訂項目',
+    items: [
+      { name: '底油', price: 7.5 }
+    ]
+  }
+];
+
+export default function App() {
+  // 一開始版面清零
+  const [sqft, setSqft] = useState(0);
+  const [baseLevelingList, setBaseLevelingList] = useState([]);
+  const [flooringList, setFlooringList] = useState([]);
+
+  // 控制下拉選單的顯示
+  const [showBaseMenu, setShowBaseMenu] = useState(false);
+  const [showLayerMenu, setShowLayerMenu] = useState(false);
+  const [showSystemMenu, setShowSystemMenu] = useState(false);
+
+  // 複製按鈕的反饋
+  const [copied, setCopied] = useState(false);
+
+  // 一鍵設值平方呎數
+  const handleSqftPreset = (val) => {
+    setSqft(val);
+  };
+
+  // 添加基底整平項目
+  const addBaseLeveling = (preset) => {
+    const newItem = {
+      id: `base-${Date.now()}-${Math.random()}`,
+      name: preset.name,
+      price: preset.price,
+      hasThickness: preset.hasThickness,
+      thickness: preset.hasThickness ? preset.thickness : undefined
+    };
+    setBaseLevelingList([...baseLevelingList, newItem]);
+    setShowBaseMenu(false);
+  };
+
+  // 添加單一地台工序
+  const addProcessLayer = (layerPreset) => {
+    const newItem = {
+      id: `layer-${Date.now()}-${Math.random()}`,
+      name: layerPreset.name,
+      price: layerPreset.price,
+      isSystem: false,
+      isFlatRate: !!layerPreset.isFlatRate,
+      unit: layerPreset.unit || '呎',
+      quantity: layerPreset.isFlatRate ? 1 : undefined
+    };
+    setFlooringList([...flooringList, newItem]);
+    setShowLayerMenu(false);
+  };
+
+  // 添加系統套餐
+  const addSystemPreset = (systemPreset) => {
+    const newSystem = {
+      id: `system-${Date.now()}-${Math.random()}`,
+      name: systemPreset.name,
+      isSystem: true,
+      items: systemPreset.items.map((item) => ({
+        id: `nested-${Date.now()}-${Math.random()}`,
+        name: item.name,
+        price: item.price,
+        isFlatRate: !!item.isFlatRate,
+        unit: item.unit || '呎',
+        quantity: item.isFlatRate ? 1 : undefined
+      }))
+    };
+    setFlooringList([...flooringList, newSystem]);
+    setShowSystemMenu(false);
+  };
+
+  // 修改基底整平內容
+  const updateBaseItem = (id, fields) => {
+    setBaseLevelingList(
+      baseLevelingList.map((item) => (item.id === id ? { ...item, ...fields } : item))
+    );
+  };
+
+  // 修改地台做法 (可能包含系統內部的項目)
+  const updateFlooringItem = (id, fields, parentSystemId = null) => {
+    if (parentSystemId) {
+      setFlooringList(
+        flooringList.map((sys) => {
+          if (sys.id === parentSystemId) {
+            return {
+              ...sys,
+              items: sys.items.map((item) => (item.id === id ? { ...item, ...fields } : item))
+            };
+          }
+          return sys;
+        })
+      );
+    } else {
+      setFlooringList(
+        flooringList.map((item) => (item.id === id ? { ...item, ...fields } : item))
+      );
+    }
+  };
+
+  // 修改系統標題
+  const updateSystemName = (systemId, newName) => {
+    setFlooringList(
+      flooringList.map((item) => (item.id === systemId ? { ...item, name: newName } : item))
+    );
+  };
+
+  // 刪除基底整平
+  const deleteBaseItem = (id) => {
+    setBaseLevelingList(baseLevelingList.filter((item) => item.id !== id));
+  };
+
+  // 刪除地台項目/系統
+  const deleteFlooringItem = (id, parentSystemId = null) => {
+    if (parentSystemId) {
+      setFlooringList(
+        flooringList.map((sys) => {
+          if (sys.id === parentSystemId) {
+            return {
+              ...sys,
+              items: sys.items.filter((item) => item.id !== id)
+            };
+          }
+          return sys;
+        })
+      );
+    } else {
+      setFlooringList(flooringList.filter((item) => item.id !== id));
+    }
+  };
+
+  // 清空所有內容
+  const clearAll = () => {
+    setSqft(0);
+    setBaseLevelingList([]);
+    setFlooringList([]);
+  };
+
+  // ==================== 排序與挪動邏輯 (純箭頭排序) ====================
+  // 1. 基底整平列表排序 (手動按鈕)
+  const moveBaseItem = (index, direction) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= baseLevelingList.length) return;
+    const newList = [...baseLevelingList];
+    const temp = newList[index];
+    newList[index] = newList[nextIndex];
+    newList[nextIndex] = temp;
+    setBaseLevelingList(newList);
+  };
+
+  // 2. 地台做法主列表排序 (手動按鈕)
+  const moveFlooringItem = (index, direction) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= flooringList.length) return;
+    const newList = [...flooringList];
+    const temp = newList[index];
+    newList[index] = newList[nextIndex];
+    newList[nextIndex] = temp;
+    setFlooringList(newList);
+  };
+
+  // 3. 系統內部工序排序 (手動按鈕)
+  const moveNestedItem = (systemId, itemIndex, direction) => {
+    setFlooringList(
+      flooringList.map((sys) => {
+        if (sys.id === systemId) {
+          const nextIndex = itemIndex + direction;
+          if (nextIndex < 0 || nextIndex >= sys.items.length) return sys;
+          const newItems = [...sys.items];
+          const temp = newItems[itemIndex];
+          newItems[itemIndex] = newItems[nextIndex];
+          newItems[nextIndex] = temp;
+          return { ...sys, items: newItems };
+        }
+        return sys;
+      })
+    );
+  };
+
+  // 4. 將嵌套工序移出系統，變成獨立工序 (向上彈出)
+  const pullItemOut = (systemId, itemId, nestedIndex) => {
+    const system = flooringList.find((s) => s.id === systemId);
+    if (!system) return;
+    const itemToExtract = system.items[nestedIndex];
+
+    // 從系統中移除
+    const updatedSystemItems = system.items.filter((it) => it.id !== itemId);
+
+    // 找到該系統在主列表的 index，並將該工序插入其下方
+    const systemIndex = flooringList.findIndex((s) => s.id === systemId);
+    const newStandaloneItem = {
+      id: `layer-${Date.now()}-${Math.random()}`,
+      name: itemToExtract.name,
+      price: itemToExtract.price,
+      isSystem: false,
+      isFlatRate: !!itemToExtract.isFlatRate,
+      unit: itemToExtract.unit || '呎',
+      quantity: itemToExtract.isFlatRate ? itemToExtract.quantity : undefined
+    };
+
+    const newFlooringList = [...flooringList];
+    newFlooringList[systemIndex] = { ...system, items: updatedSystemItems };
+    newFlooringList.splice(systemIndex + 1, 0, newStandaloneItem);
+
+    setFlooringList(newFlooringList);
+  };
+
+  // 5. 將獨立工序移入某個系統套餐內
+  const pushItemIntoSystem = (itemId, systemId) => {
+    const itemToMove = flooringList.find((it) => it.id === itemId);
+    if (!itemToMove || itemToMove.isSystem) return;
+
+    setFlooringList(
+      flooringList
+        .map((node) => {
+          if (node.id === systemId) {
+            return {
+              ...node,
+              items: [
+                ...node.items,
+                { 
+                  id: `nested-${Date.now()}-${Math.random()}`, 
+                  name: itemToMove.name, 
+                  price: itemToMove.price,
+                  isFlatRate: !!itemToMove.isFlatRate,
+                  unit: itemToMove.unit || '呎',
+                  quantity: itemToMove.isFlatRate ? itemToMove.quantity : undefined
+                }
+              ]
+            };
+          }
+          return node;
+        })
+        .filter((node) => node.id !== itemId) // 在主列表中移除
+    );
+  };
+
+  // ==================== 計算總價格 & 計算單個系統的呎價 ====================
+  // 每個系統動態累計呎價 (不累加 flat rate 固定項目至系統每呎呎價中)
+  const getSystemPriceSum = (sys) => {
+    return sys.items.reduce((sum, item) => sum + (item.isFlatRate ? 0 : (parseFloat(item.price) || 0)), 0);
+  };
+
+  // 系統固定項目小計
+  const getSystemFlatTotal = (sys) => {
+    return sys.items.reduce((sum, item) => sum + (item.isFlatRate ? (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1) : 0), 0);
+  };
+
+  // 基底整平總價 (與面積 sqft 掛鉤)
+  const baseSubtotal = useMemo(() => {
+    const totalUnit = baseLevelingList.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+    return totalUnit * sqft;
+  }, [baseLevelingList, sqft]);
+
+  // 地台做法總價
+  const flooringSubtotal = useMemo(() => {
+    let total = 0;
+    flooringList.forEach((item) => {
+      if (item.isSystem) {
+        // 系統內：一般項目乘面積 + 固定項目直接加總
+        const sysUnitSum = getSystemPriceSum(item) * sqft;
+        const sysFlatSum = getSystemFlatTotal(item);
+        total += (sysUnitSum + sysFlatSum);
+      } else {
+        // 獨立項目
+        if (item.isFlatRate) {
+          total += (parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1);
+        } else {
+          total += (parseFloat(item.price) || 0) * sqft;
+        }
+      }
+    });
+    return total;
+  }, [flooringList, sqft]);
+
+  const totalPrice = baseSubtotal + flooringSubtotal;
+
+  // ==================== 智能生成專業報價文字 ====================
+  const quotationText = useMemo(() => {
+    let text = `你好，${sqft.toLocaleString()}呎 可參考以下建議做法及初步報價:\n\n`;
+
+    // 1. 基底處理區域
+    if (baseLevelingList.length > 0) {
+      text += `【地面基底整平處理】\n`;
+      baseLevelingList.forEach((item, idx) => {
+        const thicknessStr = item.hasThickness ? `${item.thickness}mm` : '';
+        text += `${idx + 1}. ${thicknessStr}${item.name} ($${item.price}/呎)\n`;
+      });
+      text += `\n`; // 移除小計
+    }
+
+    // 2. 地台做法區域
+    if (flooringList.length > 0) {
+      text += `【地台做法】\n`;
+      flooringList.forEach((item, idx) => {
+        if (item.isSystem) {
+          const sysPrice = getSystemPriceSum(item);
+          text += `${idx + 1}. ${item.name} ($${sysPrice}/呎) 包含以下工序:\n`;
+          item.items.forEach((sub) => {
+            if (sub.isFlatRate) {
+              text += `   ↳ ${sub.name} ($${sub.price}/${sub.unit} x ${sub.quantity}${sub.unit})\n`;
+            } else {
+              text += `   ↳ ${sub.name} ($${sub.price}/呎)\n`;
+            }
+          });
+        } else {
+          if (item.isFlatRate) {
+            text += `${idx + 1}. ${item.name} ($${item.price}/${item.unit} x ${item.quantity}${item.unit})\n`;
+          } else {
+            text += `${idx + 1}. ${item.name} ($${item.price}/呎)\n`;
+          }
+        }
+      });
+      text += `\n`; // 移除小計
+    }
+
+    // 3. 總價與備註 (只保留初步預算總額，不顯示均價)
+    text += `------------------------------------\n`;
+    text += `施工總面積: ${sqft.toLocaleString()} 平方呎\n`;
+    text += `初步預算總價約為: HK$ ${totalPrice.toLocaleString()}\n\n`;
+    text += `*備註: 以上為初步估價及建議，最終報價以度呎後單位分析及雙方溝通配合為準。`;
+
+    return text;
+  }, [sqft, baseLevelingList, flooringList, totalPrice]);
+
+  // 一鍵複製剪貼簿
+  const copyToClipboard = () => {
+    const textArea = document.createElement("textarea");
+    textArea.value = quotationText;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('複製失敗:', err);
+    }
+    document.body.removeChild(textArea);
+  };
+
+  // 獲取目前所有激活的系統套餐列表 (供獨立工序選擇「移入系統」)
+  const activeSystems = useMemo(() => {
+    return flooringList.filter((item) => item.isSystem);
+  }, [flooringList]);
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col">
+      {/* 導航頭部 */}
+      <header className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white shadow-md py-4 px-6 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-3">
+            <span className="bg-indigo-500 text-white font-bold p-2 rounded-lg text-lg shadow-inner">🚧</span>
+            <div>
+              <h1 className="text-xl font-bold tracking-wide">地面工程智能模組化報價工具</h1>
+              <p className="text-xs text-indigo-200">專為球場、停車場、藝術地坪設計的多層級報價系統</p>
+            </div>
+          </div>
+          <button 
+            onClick={clearAll}
+            className="text-xs bg-red-600/20 hover:bg-red-600/40 text-red-300 border border-red-500/30 px-3 py-1.5 rounded transition"
+          >
+            🗑️ 清空重設
+          </button>
+        </div>
+      </header>
+
+      {/* 主體布局 */}
+      <main className="max-w-7xl mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 w-full">
+        
+        {/* 左側：工作配置區 (占 7 格) */}
+        <div className="lg:col-span-7 space-y-6">
+          
+          {/* 核心參數：面積設定 */}
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <div className="flex items-center justify-between mb-3">
+              <label className="block text-slate-700 font-semibold text-base flex items-center gap-2">
+                📐 1. 輸入工程面積
+              </label>
+              <span className="text-xs font-mono text-slate-400">Sq. Ft.</span>
+            </div>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="number"
+                  value={sqft || ''}
+                  onChange={(e) => setSqft(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-lg font-bold text-indigo-950 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
+                  placeholder="請輸入平方呎數"
+                />
+                <div className="absolute right-3 top-3.5 text-slate-400 font-bold text-sm">
+                  平方呎 (sq ft)
+                </div>
+              </div>
+            </div>
+            
+            {/* 快速選填 */}
+            <div className="flex flex-wrap gap-2 mt-3">
+              {[300, 500, 1000, 2000, 5000, 10000].map((preset) => (
+                <button
+                  key={preset}
+                  onClick={() => handleSqftPreset(preset)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-lg transition border ${
+                    sqft === preset
+                      ? 'bg-indigo-600 border-indigo-600 text-white'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {preset.toLocaleString()} 呎
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 第一大區域：地面基底整平處理 */}
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span className="bg-amber-100 text-amber-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">A</span>
+                  地面基底整平處理
+                </h2>
+                <p className="text-xs text-slate-400">通常為施工前打磨及自流平整平底層</p>
+              </div>
+
+              {/* 添加基底按鈕與下拉清單 */}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setShowBaseMenu(!showBaseMenu);
+                    setShowLayerMenu(false);
+                    setShowSystemMenu(false);
+                  }}
+                  className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-sm shadow-amber-500/20"
+                >
+                  ➕ 添加工序層次
+                </button>
+
+                {showBaseMenu && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowBaseMenu(false)} />
+                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-20 max-h-80 overflow-y-auto">
+                      <div className="px-3 py-1.5 text-xs font-semibold text-slate-400 bg-slate-50">選擇基底處理工序：</div>
+                      {BASE_LEVELING_PRESETS.map((preset, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => addBaseLeveling(preset)}
+                          className="w-full text-left px-4 py-2 hover:bg-slate-50 transition text-xs flex justify-between items-center border-b border-slate-100 last:border-0"
+                        >
+                          <span className="font-medium text-slate-700">
+                            {preset.hasThickness ? `${preset.thickness}mm` : ''}{preset.name}
+                          </span>
+                          <span className="text-amber-600 font-mono font-bold">${preset.price}/平方呎</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* 基底工序列表 */}
+            {baseLevelingList.length === 0 ? (
+              <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400 text-xs">
+                🫙 暫未添加基底整平工序。請點擊上方按鈕添加。
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {baseLevelingList.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200/80 transition"
+                  >
+                    {/* 排序標記 */}
+                    <div className="text-slate-400 font-mono text-[10px] select-none w-4 text-center">
+                      {index + 1}
+                    </div>
+
+                    {/* 工序主編輯內容 */}
+                    <div className="flex-1 flex flex-wrap items-center gap-2">
+                      {/* 如果含有厚度 (mm)，厚度數字也是獨立的可編輯 Text Block */}
+                      {item.hasThickness && (
+                        <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
+                          <input
+                            type="number"
+                            value={item.thickness || ''}
+                            onChange={(e) => updateBaseItem(item.id, { thickness: parseInt(e.target.value) || 0 })}
+                            className="w-10 bg-transparent text-center font-bold text-amber-800 focus:outline-none"
+                            title="修改厚度"
+                          />
+                          <span className="text-xs font-bold text-amber-700">mm</span>
+                        </div>
+                      )}
+
+                      {/* 工序名稱 Text Block */}
+                      <input
+                        type="text"
+                        value={item.name}
+                        onChange={(e) => updateBaseItem(item.id, { name: e.target.value })}
+                        className="flex-1 min-w-[120px] bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:border-indigo-500"
+                        placeholder="工序名稱"
+                      />
+                    </div>
+
+                    {/* 價格 Text Block */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-slate-400 text-xs">$</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={item.price}
+                        onChange={(e) => updateBaseItem(item.id, { price: parseFloat(e.target.value) || 0 })}
+                        className="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-center font-mono font-bold text-xs text-indigo-950 focus:outline-none focus:border-indigo-500"
+                        placeholder="單價"
+                      />
+                      <span className="text-slate-400 text-xs">/呎</span>
+                    </div>
+
+                    {/* 手動排序及刪除控制 */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => moveBaseItem(index, -1)}
+                        disabled={index === 0}
+                        className="p-1 hover:bg-slate-200 text-slate-500 rounded disabled:opacity-30"
+                        title="向上移動"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        onClick={() => moveBaseItem(index, 1)}
+                        disabled={index === baseLevelingList.length - 1}
+                        className="p-1 hover:bg-slate-200 text-slate-500 rounded disabled:opacity-30"
+                        title="向下移動"
+                      >
+                        ▼
+                      </button>
+                      <button
+                        onClick={() => deleteBaseItem(item.id)}
+                        className="p-1 hover:bg-red-50 text-red-500 rounded ml-1"
+                        title="刪除"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 第二大區域：地台做法 */}
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span className="bg-indigo-100 text-indigo-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">B</span>
+                  地台做法系統
+                </h2>
+                <p className="text-xs text-slate-400">可添加「獨立自訂工序」或一鍵導入「系統套餐」</p>
+              </div>
+
+              {/* 雙按鈕添加區 */}
+              <div className="flex flex-wrap sm:flex-nowrap gap-2">
+                
+                {/* 按鈕 1：添加單一工序層次 */}
+                <div className="relative flex-1 sm:flex-none">
+                  <button
+                    onClick={() => {
+                      setShowLayerMenu(!showLayerMenu);
+                      setShowSystemMenu(false);
+                      setShowBaseMenu(false);
+                    }}
+                    className="w-full bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-semibold px-3.5 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
+                  >
+                    ➕ 單一工序
+                  </button>
+
+                  {showLayerMenu && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowLayerMenu(false)} />
+                      <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-20 max-h-96 overflow-y-auto">
+                        {PROCESS_LAYER_PRESETS.map((group, gIdx) => (
+                          <div key={gIdx} className="border-b border-slate-50 last:border-b-0 pb-1.5">
+                            <div className="px-3 py-1 text-[11px] font-bold text-indigo-500 bg-indigo-50/50 sticky top-0">
+                              {group.category}
+                            </div>
+                            {group.items.map((layer, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => addProcessLayer(layer)}
+                                className="w-full text-left px-4 py-1.5 hover:bg-slate-50 transition text-xs flex justify-between items-start gap-3 border-b border-slate-100/50 last:border-0"
+                              >
+                                <span className="text-slate-600 font-medium leading-tight">{layer.name}</span>
+                                <span className="text-indigo-600 font-mono font-bold shrink-0">
+                                  ${layer.price}/{layer.unit || '呎'}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* 按鈕 2：添加系統套餐 */}
+                <div className="relative flex-1 sm:flex-none">
+                  <button
+                    onClick={() => {
+                      setShowSystemMenu(!showSystemMenu);
+                      setShowLayerMenu(false);
+                      setShowBaseMenu(false);
+                    }}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3.5 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm shadow-indigo-600/20"
+                  >
+                    🎁 系統套餐 (全套)
+                  </button>
+
+                  {showSystemMenu && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowSystemMenu(false)} />
+                      <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-20 max-h-96 overflow-y-auto">
+                        <div className="px-3 py-1.5 text-xs font-semibold text-slate-400 bg-slate-50">快速套用成套工法：</div>
+                        {SYSTEM_PRESETS.map((sys, idx) => {
+                          const originalSum = sys.items.reduce((s, i) => s + i.price, 0);
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => addSystemPreset(sys)}
+                              className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition text-xs border-b border-slate-100 last:border-0"
+                            >
+                              <div className="flex justify-between items-center font-bold text-slate-700">
+                                <span>{sys.name}</span>
+                                <span className="text-indigo-600 font-mono">${originalSum}/呎</span>
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                包含 {sys.items.length} 個預設工序層次
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+              </div>
+            </div>
+
+            {/* 地台做法列表 */}
+            {flooringList.length === 0 ? (
+              <div className="border-2 border-dashed border-slate-200 rounded-xl p-10 text-center text-slate-400 text-xs">
+                🪄 暫無地台施工項目，請利用右上方按鈕添加獨立工序或系統套餐。
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {flooringList.map((item, index) => {
+                  
+                  // 分支一：如果該節點是「系統套餐」
+                  if (item.isSystem) {
+                    const sysPrice = getSystemPriceSum(item);
+                    return (
+                      <div
+                        key={item.id}
+                        className="p-4 rounded-xl border-2 border-indigo-200/80 bg-indigo-50/10 transition"
+                      >
+                        {/* 系統頭部（展示系統名字、動態呎價） */}
+                        <div className="flex items-center justify-between border-b border-indigo-100 pb-2 mb-3">
+                          <div className="flex items-center gap-2 flex-1">
+                            <span className="text-indigo-400 font-mono text-xs select-none">
+                              {index + 1}
+                            </span>
+                            {/* 系統套餐名稱 (可即時編輯) */}
+                            <input
+                              type="text"
+                              value={item.name}
+                              onChange={(e) => updateSystemName(item.id, e.target.value)}
+                              className="bg-transparent border-b border-transparent hover:border-indigo-400 focus:border-indigo-600 focus:bg-white px-1 py-0.5 text-xs font-extrabold text-indigo-950 flex-1 focus:outline-none"
+                              title="修改套餐系統名稱"
+                            />
+                          </div>
+
+                          {/* 顯示系統動態計算後的總呎價 */}
+                          <div className="flex items-center gap-3">
+                            <span className="bg-indigo-600 text-white font-mono font-bold text-[11px] px-2.5 py-0.5 rounded-full shadow-sm">
+                              累計: ${sysPrice.toFixed(1)}/呎
+                            </span>
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                onClick={() => moveFlooringItem(index, -1)}
+                                disabled={index === 0}
+                                className="p-0.5 text-xs hover:bg-indigo-100 text-indigo-700 rounded disabled:opacity-20"
+                                title="向上移動此系統"
+                              >
+                                ▲
+                              </button>
+                              <button
+                                onClick={() => moveFlooringItem(index, 1)}
+                                disabled={index === flooringList.length - 1}
+                                className="p-0.5 text-xs hover:bg-indigo-100 text-indigo-700 rounded disabled:opacity-20"
+                                title="向下移動此系統"
+                              >
+                                ▼
+                              </button>
+                              <button
+                                onClick={() => deleteFlooringItem(item.id)}
+                                className="p-1 hover:bg-red-100 text-red-600 rounded ml-1"
+                                title="刪除整個系統"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 系統內部的嵌套工序列表 */}
+                        {item.items.length === 0 ? (
+                          <div className="text-center py-4 border border-dashed border-indigo-200 rounded-lg text-slate-400 text-xs">
+                            💡 套餐內暫無工序。
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5 pl-2">
+                            {item.items.map((sub, subIdx) => (
+                              <div
+                                key={sub.id}
+                                className="flex items-center justify-between gap-3 p-2 bg-white/90 hover:bg-white rounded-lg border border-indigo-100/70 transition text-xs"
+                              >
+                                <div className="flex items-center gap-2 flex-1">
+                                  <span className="text-indigo-300 font-mono text-[10px] w-4 text-center select-none">{subIdx + 1}</span>
+                                  {/* 嵌套工序名稱 Text Block */}
+                                  <input
+                                    type="text"
+                                    value={sub.name}
+                                    onChange={(e) => updateFlooringItem(sub.id, { name: e.target.value }, item.id)}
+                                    className="flex-1 min-w-[120px] bg-transparent border border-transparent hover:border-slate-200 focus:border-indigo-500 focus:bg-white rounded px-1.5 py-0.5 text-xs text-slate-600 focus:outline-none"
+                                  />
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  {/* 如果是固定價格項目，顯示數量編輯 */}
+                                  {sub.isFlatRate && (
+                                    <div className="flex items-center gap-1 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5 text-[11px]">
+                                      <span className="text-slate-500">數量:</span>
+                                      <input
+                                        type="number"
+                                        value={sub.quantity || 1}
+                                        onChange={(e) => updateFlooringItem(sub.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) }, item.id)}
+                                        className="w-8 bg-transparent text-center font-bold text-indigo-950 focus:outline-none"
+                                      />
+                                      <span className="text-slate-500">{sub.unit}</span>
+                                    </div>
+                                  )}
+
+                                  {/* 嵌套工序呎價 Text Block */}
+                                  <div className="flex items-center gap-0.5 shrink-0">
+                                    <span className="text-slate-400">$</span>
+                                    <input
+                                      type="number"
+                                      step="0.5"
+                                      value={sub.price}
+                                      onChange={(e) => updateFlooringItem(sub.id, { price: parseFloat(e.target.value) || 0 }, item.id)}
+                                      className="w-14 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-center font-mono font-bold text-xs focus:outline-none focus:border-indigo-500"
+                                    />
+                                    <span className="text-slate-400 text-[10px]">/{sub.unit}</span>
+                                  </div>
+
+                                  {/* 系統工序單個操控按鈕（拆出、升、降、刪） */}
+                                  <div className="flex items-center gap-0.5">
+                                    <button
+                                      onClick={() => pullItemOut(item.id, sub.id, subIdx)}
+                                      className="p-1 hover:bg-slate-100 text-slate-500 rounded font-bold"
+                                      title="拆出成為獨立工序"
+                                    >
+                                      ↱ 拆出
+                                    </button>
+                                    <button
+                                      onClick={() => moveNestedItem(item.id, subIdx, -1)}
+                                      disabled={subIdx === 0}
+                                      className="p-0.5 text-[10px] hover:bg-slate-100 text-slate-500 disabled:opacity-20"
+                                    >
+                                      ▲
+                                    </button>
+                                    <button
+                                      onClick={() => moveNestedItem(item.id, subIdx, 1)}
+                                      disabled={subIdx === item.items.length - 1}
+                                      className="p-0.5 text-[10px] hover:bg-slate-100 text-slate-500 disabled:opacity-20"
+                                    >
+                                      ▼
+                                    </button>
+                                    <button
+                                      onClick={() => deleteFlooringItem(sub.id, item.id)}
+                                      className="p-1 hover:bg-red-50 text-red-500 rounded"
+                                      title="刪除"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // 分支二：如果該節點是獨立的「單一地台工序」
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white hover:bg-slate-50 rounded-xl border-2 border-slate-200 transition"
+                    >
+                      <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                        <div className="text-slate-400 font-mono text-xs select-none w-4 text-center">
+                          {index + 1}
+                        </div>
+                        {/* 獨立工序名稱 Text Block */}
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={(e) => updateFlooringItem(item.id, { name: e.target.value })}
+                          className="flex-1 bg-transparent border border-transparent hover:border-slate-200 focus:border-indigo-500 focus:bg-white rounded px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none"
+                          placeholder="工序名稱"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        {/* 如果是固定價格項目，顯示數量編輯 */}
+                        {item.isFlatRate && (
+                          <div className="flex items-center gap-1 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-1 text-xs">
+                            <span className="text-slate-500 font-medium">數量:</span>
+                            <input
+                              type="number"
+                              value={item.quantity || 1}
+                              onChange={(e) => updateFlooringItem(item.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) })}
+                              className="w-10 bg-transparent text-center font-bold text-indigo-950 focus:outline-none"
+                            />
+                            <span className="text-slate-500 font-semibold">{item.unit}</span>
+                          </div>
+                        )}
+
+                        {/* 獨立工序價格 Text Block */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-slate-400 text-xs">$</span>
+                          <input
+                            type="number"
+                            step="0.5"
+                            value={item.price}
+                            onChange={(e) => updateFlooringItem(item.id, { price: parseFloat(e.target.value) || 0 })}
+                            className="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-center font-mono font-bold text-xs text-indigo-950 focus:outline-none"
+                          />
+                          <span className="text-slate-400 text-xs">/{item.unit}</span>
+                        </div>
+
+                        {/* 手動按鈕（加入已有的系統套餐） */}
+                        {activeSystems.length > 0 && (
+                          <div className="relative group">
+                            <button className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-bold">
+                              ↳ 併入系統
+                            </button>
+                            <div className="hidden group-hover:block absolute right-0 bottom-full mb-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-30 py-1 text-[11px]">
+                              <div className="px-2 py-1 text-slate-400 font-semibold border-b">選擇目標系統：</div>
+                              {activeSystems.map((sys) => (
+                                <button
+                                  key={sys.id}
+                                  onClick={() => pushItemIntoSystem(item.id, sys.id)}
+                                  className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 text-slate-700 truncate block"
+                                >
+                                  {sys.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 排序及刪除按鈕 */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => moveFlooringItem(index, -1)}
+                            disabled={index === 0}
+                            className="p-1 hover:bg-slate-200 text-slate-500 rounded disabled:opacity-30 text-xs"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            onClick={() => moveFlooringItem(index, 1)}
+                            disabled={index === flooringList.length - 1}
+                            className="p-1 hover:bg-slate-200 text-slate-500 rounded disabled:opacity-30 text-xs"
+                          >
+                            ▼
+                          </button>
+                          <button
+                            onClick={() => deleteFlooringItem(item.id)}
+                            className="p-1 hover:bg-red-50 text-red-500 rounded ml-1 text-xs"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          
+        </div>
+
+        {/* 右側：即時初步報價結果 & 計算 (占 5 格) */}
+        <div className="lg:col-span-5 space-y-6">
+          <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-xl border border-slate-800 sticky top-24">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
+              <h2 className="text-base font-extrabold tracking-wide flex items-center gap-2">
+                <span>📋</span> 即時報價及建議做法格式
+              </h2>
+              <span className="bg-green-500/20 text-green-400 font-mono text-[10px] px-2 py-0.5 rounded border border-green-500/30">
+                即時同步
+              </span>
+            </div>
+
+            {/* 即時總覽資訊卡 */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/50">
+                <p className="text-[10px] text-slate-400">基底整平總計</p>
+                <p className="text-base font-bold text-amber-400 font-mono">HK$ {baseSubtotal.toLocaleString()}</p>
+              </div>
+              <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/50">
+                <p className="text-[10px] text-slate-400">地台做法總計</p>
+                <p className="text-base font-bold text-indigo-400 font-mono">HK$ {flooringSubtotal.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="bg-indigo-950/50 p-4 rounded-xl border border-indigo-900/50 mb-6 flex justify-between items-center">
+              <div>
+                <p className="text-xs text-indigo-200">初步預算總工程價 (已整合各項工序與固定費用)</p>
+                <p className="text-2xl font-black text-indigo-300 font-mono mt-1">
+                  HK$ {totalPrice.toLocaleString()}
+                </p>
+              </div>
+              <span className="text-2xl">💰</span>
+            </div>
+
+            {/* 可供直接複製的文字框 */}
+            <div className="relative">
+              <div className="absolute top-2 right-2 z-10">
+                <button
+                  onClick={copyToClipboard}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition duration-200 flex items-center gap-1.5 ${
+                    copied
+                      ? 'bg-green-600 text-white'
+                      : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/30'
+                  }`}
+                >
+                  {copied ? (
+                    <>
+                      <span>✓</span> 已複製到剪貼簿
+                    </>
+                  ) : (
+                    <>
+                      <span>📋</span> 一鍵複製報價
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* 報價文字區塊 */}
+              <textarea
+                value={quotationText}
+                readOnly
+                rows={14}
+                className="w-full bg-slate-950 text-slate-200 font-mono text-xs p-4 rounded-xl border border-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 leading-relaxed resize-none pt-12"
+              />
+            </div>
+
+            {/* 使用提示 */}
+            <div className="mt-4 p-3 bg-slate-800/40 rounded-xl border border-slate-800 text-[11px] text-slate-400 leading-relaxed">
+              💡 💡 **貼心提示**：此報價單會在你於左側面板增減工序、調整單價/數量/mm 時**自動重新生成**。報價文本已為你移除小計、均價，並優化了套餐內部的排版，請直接點擊「一鍵複製報價」分享予客戶！
+            </div>
+          </div>
+        </div>
+
+      </main>
+
+      {/* 底部頁腳 */}
+      <footer className="bg-slate-100 border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        © 2026 地面工程模組化智慧報價系統 · 純箭頭極簡微調 · 精準定價
+      </footer>
+    </div>
+  );
+}
