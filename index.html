@@ -102,8 +102,8 @@
               ➕ 添加工序層次
             </button>
 
-            <!-- 下拉選單 -->
-            <div id="base-dropdown" class="hidden absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-20 max-h-80 overflow-y-auto">
+            <!-- 下拉選單 - 增加最大寬度限制防止手機出界 -->
+            <div id="base-dropdown" class="hidden absolute right-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-20 max-h-80 overflow-y-auto">
               <div class="px-3 py-1.5 text-xs font-semibold text-slate-400 bg-slate-50">選擇基底處理工序：</div>
               <div id="base-presets-container"></div>
             </div>
@@ -140,7 +140,7 @@
                 ➕ 單一工序
               </button>
 
-              <div id="layer-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-20 max-h-96 overflow-y-auto">
+              <div id="layer-dropdown" class="hidden absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-20 max-h-96 overflow-y-auto">
                 <!-- 動態注入分組單一工序 -->
               </div>
             </div>
@@ -155,7 +155,7 @@
                 🎁 系統套餐 (全套)
               </button>
 
-              <div id="system-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-20 max-h-96 overflow-y-auto">
+              <div id="system-dropdown" class="hidden absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-slate-100 py-1 z-20 max-h-96 overflow-y-auto">
                 <div class="px-3 py-1.5 text-xs font-semibold text-slate-400 bg-slate-50">快速套用成套工法：</div>
                 <div id="system-presets-container"></div>
               </div>
@@ -698,6 +698,7 @@
       calculateAndRenderQuote();
     }
 
+    // 向上/向下排序地台做法主清單
     function moveFlooringItem(index, direction) {
       const targetIndex = index + direction;
       if (targetIndex < 0 || targetIndex >= flooringList.length) return;
@@ -708,6 +709,7 @@
       calculateAndRenderQuote();
     }
 
+    // 向上/向下排序系統內部的子項目
     function moveNestedItem(systemId, itemIndex, direction) {
       flooringList = flooringList.map(sys => {
         if (sys.id === systemId) {
@@ -850,7 +852,7 @@
       }
     }
 
-    // ==================== 渲染 A: 基底整平列表 DOM ====================
+    // ==================== 渲染 A: 基底整平列表 DOM (支援手機響應式排版) ====================
     function renderBaseLevelingList() {
       const container = document.getElementById('base-leveling-list');
       if (baseLevelingList.length === 0) {
@@ -869,63 +871,67 @@
         let thicknessHtml = '';
         if (item.hasThickness) {
           thicknessHtml = `
-            <div class="flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
+            <div class="flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 shrink-0">
               <input
                 type="number"
                 value="${item.thickness}"
                 oninput="onBaseInput('${item.id}', 'thickness', this.value)"
-                class="w-10 bg-transparent text-center font-bold text-amber-800 focus:outline-none"
+                class="w-10 bg-transparent text-center font-bold text-amber-800 focus:outline-none text-xs"
                 title="修改厚度"
               />
-              <span class="text-xs font-bold text-amber-700">mm</span>
+              <span class="text-[10px] font-bold text-amber-700">mm</span>
             </div>
           `;
         }
 
         return `
-          <div class="flex items-center gap-3 p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200/80 transition">
-            <div class="text-slate-400 font-mono text-[10px] select-none w-4 text-center">
-              ${index + 1}
-            </div>
-
-            <!-- 編輯內容區 -->
-            <div class="flex-1 flex flex-wrap items-center gap-2">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200/80 transition">
+            
+            <!-- 第一行：編號、厚度與工序名稱 (在手機上佔滿整行) -->
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+              <div class="text-slate-400 font-mono text-[10px] select-none w-4 text-center shrink-0">
+                ${index + 1}
+              </div>
               ${thicknessHtml}
               <input
                 type="text"
                 value="${item.name}"
                 oninput="onBaseInput('${item.id}', 'name', this.value)"
-                class="flex-1 min-w-[120px] bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:border-indigo-500"
+                class="flex-1 min-w-0 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:border-indigo-500"
                 placeholder="工序名稱"
               />
             </div>
 
-            <!-- 單價 -->
-            <div class="flex items-center gap-1">
-              <span class="text-slate-400 text-xs">$</span>
-              <input
-                type="number"
-                step="0.5"
-                value="${item.price}"
-                oninput="onBaseInput('${item.id}', 'price', this.value)"
-                class="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-center font-mono font-bold text-xs text-indigo-950 focus:outline-none focus:border-indigo-500"
-                placeholder="單價"
-              />
-              <span class="text-slate-400 text-xs">/呎</span>
+            <!-- 第二行：單價輸入與控制按鈕 (手機上自動換行，平板電腦上橫向排列) -->
+            <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200/60">
+              <!-- 單價 -->
+              <div class="flex items-center gap-1 shrink-0">
+                <span class="text-slate-400 text-xs">$</span>
+                <input
+                  type="number"
+                  step="0.5"
+                  value="${item.price}"
+                  oninput="onBaseInput('${item.id}', 'price', this.value)"
+                  class="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-center font-mono font-bold text-xs text-indigo-950 focus:outline-none focus:border-indigo-500"
+                  placeholder="單價"
+                />
+                <span class="text-slate-400 text-xs">/呎</span>
+              </div>
+
+              <!-- 排序操作按鈕 -->
+              <div class="flex items-center gap-1 shrink-0">
+                <button onclick="moveBaseItem(${index}, -1)" ${upDisabled} class="p-1 hover:bg-slate-200 text-slate-500 rounded text-xs">▲</button>
+                <button onclick="moveBaseItem(${index}, 1)" ${downDisabled} class="p-1 hover:bg-slate-200 text-slate-500 rounded text-xs">▼</button>
+                <button onclick="deleteBaseItem('${item.id}')" class="p-1 hover:bg-red-50 text-red-500 rounded ml-1 text-xs">🗑️</button>
+              </div>
             </div>
 
-            <!-- 操作控制 -->
-            <div class="flex items-center gap-1 shrink-0">
-              <button onclick="moveBaseItem(${index}, -1)" ${upDisabled} class="p-1 hover:bg-slate-200 text-slate-500 rounded">▲</button>
-              <button onclick="moveBaseItem(${index}, 1)" ${downDisabled} class="p-1 hover:bg-slate-200 text-slate-500 rounded">▼</button>
-              <button onclick="deleteBaseItem('${item.id}')" class="p-1 hover:bg-red-50 text-red-500 rounded ml-1">🗑️</button>
-            </div>
           </div>
         `;
       }).join('');
     }
 
-    // ==================== 渲染 B: 地台做法列表 DOM ====================
+    // ==================== 渲染 B: 地台做法列表 DOM (支援手機響應式排版) ====================
     function renderFlooringList() {
       const container = document.getElementById('flooring-list');
       if (flooringList.length === 0) {
@@ -964,7 +970,7 @@
               let flatRateQtyHtml = '';
               if (sub.isFlatRate) {
                 flatRateQtyHtml = `
-                  <div class="flex items-center gap-1 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5 text-[11px]">
+                  <div class="flex items-center gap-1 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5 text-[11px] shrink-0">
                     <span class="text-slate-500">數量:</span>
                     <input
                       type="number"
@@ -978,62 +984,67 @@
               }
 
               return `
-                <div class="flex items-center justify-between gap-3 p-2 bg-white/90 hover:bg-white rounded-lg border border-indigo-100/70 transition text-xs">
-                  <div class="flex items-center gap-2 flex-1">
-                    <span class="text-indigo-300 font-mono text-[10px] w-4 text-center select-none">${subIdx + 1}</span>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-white/90 hover:bg-white rounded-lg border border-indigo-100/70 transition text-xs">
+                  
+                  <!-- 子項目第一行：名稱 -->
+                  <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <span class="text-indigo-300 font-mono text-[10px] w-4 text-center select-none shrink-0">${subIdx + 1}</span>
                     <input
                       type="text"
                       value="${sub.name}"
                       oninput="onFlooringInput('${sub.id}', 'name', this.value, '${item.id}')"
-                      class="flex-1 min-w-[120px] bg-transparent border border-transparent hover:border-slate-200 focus:border-indigo-500 focus:bg-white rounded px-1.5 py-0.5 text-xs text-slate-600 focus:outline-none"
+                      class="flex-1 min-w-0 bg-transparent border border-transparent hover:border-slate-200 focus:border-indigo-500 focus:bg-white rounded px-1.5 py-0.5 text-xs text-slate-600 focus:outline-none"
                     />
                   </div>
 
-                  <div class="flex items-center gap-2">
-                    ${flatRateQtyHtml}
-                    <!-- 嵌套單價 -->
-                    <div class="flex items-center gap-0.5 shrink-0">
-                      <span class="text-slate-400">$</span>
-                      <input
-                        type="number"
-                        step="0.5"
-                        value="${sub.price}"
-                        oninput="onFlooringInput('${sub.id}', 'price', this.value, '${item.id}')"
-                        class="w-14 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-center font-mono font-bold text-xs focus:outline-none focus:border-indigo-500"
-                      />
-                      <span class="text-slate-400 text-[10px]">/${sub.unit}</span>
+                  <!-- 子項目第二行：單價與操作 -->
+                  <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-indigo-100/40">
+                    <div class="flex items-center gap-2 shrink-0">
+                      ${flatRateQtyHtml}
+                      <div class="flex items-center gap-0.5 shrink-0">
+                        <span class="text-slate-400">$</span>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value="${sub.price}"
+                          oninput="onFlooringInput('${sub.id}', 'price', this.value, '${item.id}')"
+                          class="w-14 bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-center font-mono font-bold text-xs focus:outline-none focus:border-indigo-500"
+                        />
+                        <span class="text-slate-400 text-[10px]">/${sub.unit}</span>
+                      </div>
                     </div>
 
-                    <!-- 排序操作 -->
+                    <!-- 操作控制 -->
                     <div class="flex items-center gap-0.5 shrink-0">
-                      <button onclick="pullItemOut('${item.id}', '${sub.id}', ${subIdx})" class="p-1 hover:bg-slate-100 text-slate-500 rounded font-bold">↱ 拆出</button>
+                      <button onclick="pullItemOut('${item.id}', '${sub.id}', ${subIdx})" class="p-1 hover:bg-slate-100 text-slate-500 rounded font-bold text-[10px]">↱ 拆出</button>
                       <button onclick="moveNestedItem('${item.id}', ${subIdx}, -1)" ${subUpDisabled} class="p-0.5 text-[10px] hover:bg-slate-100 text-slate-500">▲</button>
                       <button onclick="moveNestedItem('${item.id}', ${subIdx}, 1)" ${subDownDisabled} class="p-0.5 text-[10px] hover:bg-slate-100 text-slate-500">▼</button>
                       <button onclick="deleteFlooringItem('${sub.id}', '${item.id}')" class="p-1 hover:bg-red-50 text-red-500 rounded">✕</button>
                     </div>
                   </div>
+
                 </div>
               `;
             }).join('');
           }
 
           return `
-            <div class="p-4 rounded-xl border-2 border-indigo-200/80 bg-indigo-50/10 transition">
+            <div class="p-3 sm:p-4 rounded-xl border-2 border-indigo-200/80 bg-indigo-50/10 transition">
               <!-- 系統標題及操控頭 -->
-              <div class="flex items-center justify-between border-b border-indigo-100 pb-2 mb-3">
-                <div class="flex items-center gap-2 flex-1">
-                  <span class="text-indigo-400 font-mono text-xs select-none">${index + 1}</span>
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-100 pb-2 mb-3">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                  <span class="text-indigo-400 font-mono text-xs select-none shrink-0">${index + 1}</span>
                   <input
                     type="text"
                     value="${item.name}"
                     oninput="onSystemNameInput('${item.id}', this.value)"
-                    class="bg-transparent border-b border-transparent hover:border-indigo-400 focus:border-indigo-600 focus:bg-white px-1 py-0.5 text-xs font-extrabold text-indigo-950 flex-1 focus:outline-none"
+                    class="bg-transparent border-b border-transparent hover:border-indigo-400 focus:border-indigo-600 focus:bg-white px-1 py-0.5 text-xs font-extrabold text-indigo-950 flex-1 min-w-0 focus:outline-none"
                     title="修改套餐系統名稱"
                   />
                 </div>
 
-                <div class="flex items-center gap-3">
-                  <span id="badge-${item.id}" class="bg-indigo-600 text-white font-mono font-bold text-[11px] px-2.5 py-0.5 rounded-full shadow-sm">
+                <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto shrink-0 pt-1 sm:pt-0">
+                  <span id="badge-${item.id}" class="bg-indigo-600 text-white font-mono font-bold text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full shadow-sm">
                     累計: $${sysPrice.toFixed(1)}/呎
                   </span>
                   <div class="flex items-center gap-0.5">
@@ -1043,7 +1054,7 @@
                   </div>
                 </div>
               </div>
-              <div class="space-y-1.5 pl-2">
+              <div class="space-y-1.5 pl-1 sm:pl-2">
                 ${nestedItemsHtml}
               </div>
             </div>
@@ -1054,20 +1065,20 @@
         let flatRateQtyHtml = '';
         if (item.isFlatRate) {
           flatRateQtyHtml = `
-            <div class="flex items-center gap-1 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-1 text-xs">
+            <div class="flex items-center gap-1 bg-indigo-50 border border-indigo-100 rounded-lg px-2 py-1 text-[11px] shrink-0">
               <span class="text-slate-500 font-medium">數量:</span>
               <input
                 type="number"
                 value="${item.quantity || 1}"
                 oninput="onFlooringInput('${item.id}', 'quantity', this.value)"
-                class="w-10 bg-transparent text-center font-bold text-indigo-950 focus:outline-none"
+                class="w-8 bg-transparent text-center font-bold text-indigo-950 focus:outline-none"
               />
               <span class="text-slate-500 font-semibold">${item.unit}</span>
             </div>
           `;
         }
 
-        // 拼接「併入系統」清單選單
+        // 拼接「併入系統」選單
         let pushToSystemHtml = '';
         if (activeSystems.length > 0) {
           const sysOptions = activeSystems.map(sys => `
@@ -1080,12 +1091,12 @@
           `).join('');
 
           pushToSystemHtml = `
-            <div class="relative group">
+            <div class="relative group shrink-0">
               <button class="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-bold">
-                ↳ 併入系統
+                ↳ 併入
               </button>
-              <div class="hidden group-hover:block absolute right-0 bottom-full mb-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-30 py-1">
-                <div class="px-2 py-1 text-slate-400 font-semibold border-b text-[10px]">選擇目標系統：</div>
+              <div class="hidden group-hover:block absolute right-0 bottom-full mb-1 w-48 sm:w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-30 py-1">
+                <div class="px-2 py-1 text-slate-400 font-semibold border-b text-[9px]">選擇目標系統：</div>
                 ${sysOptions}
               </div>
             </div>
@@ -1093,42 +1104,45 @@
         }
 
         return `
-          <div class="flex flex-wrap items-center justify-between gap-3 p-3 bg-white hover:bg-slate-50 rounded-xl border-2 border-slate-200 transition">
-            <div class="flex items-center gap-2 flex-1 min-w-[200px]">
-              <div class="text-slate-400 font-mono text-xs select-none w-4 text-center">${index + 1}</div>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-3 bg-white hover:bg-slate-50 rounded-xl border-2 border-slate-200 transition">
+            
+            <!-- 獨立工序第一行：名稱 -->
+            <div class="flex items-center gap-2 flex-1 min-w-0 w-full">
+              <div class="text-slate-400 font-mono text-xs select-none w-4 text-center shrink-0">${index + 1}</div>
               <input
                 type="text"
                 value="${item.name}"
                 oninput="onFlooringInput('${item.id}', 'name', this.value)"
-                class="flex-1 bg-transparent border border-transparent hover:border-slate-200 focus:border-indigo-500 focus:bg-white rounded px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none"
+                class="flex-1 min-w-0 bg-transparent border border-transparent hover:border-slate-200 focus:border-indigo-500 focus:bg-white rounded px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none"
                 placeholder="工序名稱"
               />
             </div>
 
-            <div class="flex items-center gap-3 shrink-0">
-              ${flatRateQtyHtml}
-              <!-- 獨立工序單價 -->
-              <div class="flex items-center gap-1">
-                <span class="text-slate-400 text-xs">$</span>
-                <input
-                  type="number"
-                  step="0.5"
-                  value="${item.price}"
-                  oninput="onFlooringInput('${item.id}', 'price', this.value)"
-                  class="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-center font-mono font-bold text-xs text-indigo-950 focus:outline-none"
-                />
-                <span class="text-slate-400 text-xs">/${item.unit}</span>
+            <!-- 獨立工序第二行：單價及操作 -->
+            <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200/60">
+              <div class="flex items-center gap-2 shrink-0">
+                ${flatRateQtyHtml}
+                <div class="flex items-center gap-1 shrink-0">
+                  <span class="text-slate-400 text-xs">$</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value="${item.price}"
+                    oninput="onFlooringInput('${item.id}', 'price', this.value)"
+                    class="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-center font-mono font-bold text-xs text-indigo-950 focus:outline-none"
+                  />
+                  <span class="text-slate-400 text-xs">/${item.unit}</span>
+                </div>
               </div>
 
-              ${pushToSystemHtml}
-
-              <!-- 排序 -->
               <div class="flex items-center gap-1 shrink-0">
+                ${pushToSystemHtml}
                 <button onclick="moveFlooringItem(${index}, -1)" ${upDisabled} class="p-1 hover:bg-slate-200 text-slate-500 rounded text-xs">▲</button>
                 <button onclick="moveFlooringItem(${index}, 1)" ${downDisabled} class="p-1 hover:bg-slate-200 text-slate-500 rounded text-xs">▼</button>
                 <button onclick="deleteFlooringItem('${item.id}')" class="p-1 hover:bg-red-50 text-red-500 rounded ml-1 text-xs">🗑️</button>
               </div>
             </div>
+
           </div>
         `;
       }).join('');
